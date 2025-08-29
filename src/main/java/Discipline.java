@@ -1,4 +1,8 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
+
+import static java.lang.Float.NaN;
 
 public class Discipline {
 
@@ -37,15 +41,20 @@ public class Discipline {
     }
 
     public double average(){
+
         if(scores == null) return  0.0;
+
         int count = 0;
         double sum = 0.0;
         int i = 4;
+
         for(var s : scores){
             sum += s * i;
             count += i++;
         }
 
-        return sum/count;
+        if(count == 0) return 0;
+
+        return BigDecimal.valueOf(sum).divide(BigDecimal.valueOf(count), 1, RoundingMode.CEILING).doubleValue();
     }
 }

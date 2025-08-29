@@ -1,3 +1,4 @@
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -5,29 +6,33 @@ import java.util.regex.Pattern;
 
 public class Main {
 
+    public static void main(String[] args){
+        Main m = new Main(args[0]);
+        m.start();
+    }
+
     List<Semester> semesters;
+    Student student;
+
+    Informations informations;
 
     public static final String tabsMenu = "\t\t\t\t\t\t";
     public static final String tabs = "\t\t\t\t\t\t";
+
     public static final String GREEN = "\u001B[32m";
     public static final String RESET = "\u001B[0m";
     public static final String RED = "\u001B[31m";
     public static final String BLUE = "\u001B[34m";
 
-
     public Main(String content){
         init(content);
+        informations = new Informations(this);
     }
 
     public Main(){}
 
     public void read(String content){
         init(content);
-    }
-
-    public static void main(String[] args){
-        Main m = new Main(args[0]);
-        m.start();
     }
 
     public void init(String content){
@@ -39,8 +44,12 @@ public class Main {
         Pattern name = Pattern.compile(" [A-Za-z].+\\(\\d{8}\\)");
         Pattern uce = Pattern.compile("UNIDADE CURRICULAR DE EXTENSÃO-UCE");
         Pattern number = Pattern.compile(" \\d+.+\\d+|-- 0 --");
+        Pattern studentCourse = Pattern.compile("Curso:\\s*(.*)");
 
         String[] lines = content.split("\n");
+
+        String sName = regex("Aluno\\(a\\):\\s*(.*)", 1, content);
+        String sCourse = regex("Curso:\\s*(.*)", 1, content);
 
         List<Semester> semesters = new ArrayList<>();
 
@@ -69,29 +78,17 @@ public class Main {
 
             Semester last = semesters.get(semesters.size() - 1);
 
-            m = code.matcher(line);
-            String codeTemp = "";
-            if(m.find()){
-                codeTemp = m.group();
-            }
+            String codeTemp = getGroup(code, line);
+            String nameTemp = getGroup(name, line);
 
-            m = name.matcher(line);
-            String nameTemp = "";
-            if(m.find()){
-                nameTemp = m.group();
-            }
-
-            m = uce.matcher(line);
-            if(m.find()){
-                nameTemp = m.group();
-            }
+            if(nameTemp.isBlank()) nameTemp = getGroup(uce, line);
 
             List<Double> score = new ArrayList<>();
             int absence = 0;
             double avg = 0;
 
             m = number.matcher(line);
-            String numberTemp = "";
+            String numberTemp;
             if(m.find()){
 
                 numberTemp = m.group();
@@ -129,11 +126,31 @@ public class Main {
 
             Discipline d = new Discipline(codeTemp, nameTemp, score, absence, avg);
 
+
             last.disciplines.add(d);
 
         }
 
+        student = new Student(sName, sCourse);
         this.semesters = semesters;
+    }
+
+    public String regex(String regex, int group, String line){
+
+        Pattern p = Pattern.compile(regex);
+        Matcher m = p.matcher(line);
+
+        if(m.find()){
+            return m.group(group);
+        }else{
+            return null;
+        }
+
+    }
+
+    public String getGroup(Pattern p, String line){
+        Matcher m = p.matcher(line);
+        return m.find() ? m.group() : "";
     }
 
     public String allAvgSemester(){
@@ -141,7 +158,7 @@ public class Main {
         StringBuilder content = new StringBuilder();
 
         for(var s : semesters){
-            content.append(tabs).append(s.date).append(": ").append(Double.isNaN(s.ira()) ? "without grade" :
+            content.append(tabs).append(s.date).append(": ").append(Double.isNaN(s.ira()) ? "no grades yet" :
                 String.format("%.2f", s.ira())
             ).append("\n");
         }
@@ -158,6 +175,35 @@ public class Main {
             count++;
         }
         return tabs + "IRA: " + String.format("%.1f", sum/count);
+    }
+
+    public String personalInfos(){
+
+        StringBuilder infos = new StringBuilder();
+
+        infos.append(student.name()).append("\n");
+        infos.append(student.course()).append("\n\n");
+
+        Table t = new Table("Infos");
+
+        for(var s : semesters){
+
+            t.addRown(s.date);
+            t.addColumn("enrolled", Integer.toString(s.totalEnrolled()));
+            t.addColumn("absences",  s.totalAbsences().toString());
+            t.addColumn("avg", s.ira().toString());
+
+        }
+
+        return infos + t.table();
+    }
+
+    public String personalTable(){
+
+
+
+        return "";
+
     }
 
     public String resume(){
@@ -279,7 +325,7 @@ public class Main {
                 str.append(sort).append(" || ");
 
                 if(d.scores == null) {
-                    str.append("without grades").append("\n");
+                    str.append("no grades yet").append("\n");
                     continue;
                 }
 
@@ -408,7 +454,7 @@ public class Main {
                 int i = 1;
 
                 if(d.scores == null){
-                    sb.append("without grades#");
+                    sb.append("no grades yet#");
                     sb.append("Absences: ").append(d.absence).append("\n");
                     continue;
                 }
@@ -417,7 +463,7 @@ public class Main {
                     sb.append(i++).append(" - ").append(scr).append("#");
                 }
 
-                sb.append("Average: ").append(String.format("%.1f", d.average())).append("#");
+                sb.append("Average: ").append(d.average()).append("#");
                 sb.append("Absence: ").append(d.absence).append("\n");
 
             }
@@ -431,7 +477,7 @@ public class Main {
     }
 
     public String showAllInfos(){
-        return tabs + linesWithInfos().replaceAll("\n", "\n\n" + tabs).replaceAll("#", "\n" + tabs);
+        return tabs + informations.lineWithInfos.replaceAll("\n", "\n\n" + tabs).replaceAll("#", "\n" + tabs);
     }
 
     public String search(){
@@ -443,7 +489,7 @@ public class Main {
 
         Pattern p = Pattern.compile(".+" + content.toLowerCase(Locale.ROOT) +".+");
 
-        String[] lines = linesWithInfos().split("\n");
+        String[] lines = informations.lineWithInfos.split("\n");
 
         StringBuilder sb = new StringBuilder();
 
@@ -465,6 +511,8 @@ public class Main {
 
         Scanner sc = new Scanner(System.in);
 
+        informations.allInfos = showAllInfos();
+
         while(true){
 
             System.out.println(tabsMenu + "[ 1 ] Show all information");
@@ -472,6 +520,7 @@ public class Main {
             System.out.println(tabsMenu + "[ 3 ] Search");
             System.out.println(tabsMenu + "[ 4 ] Average of all semesters");
             System.out.println(tabsMenu + "[ 5 ] Probably IRA");
+            System.out.println(tabsMenu + "[ 6 ] Personal information");
             System.out.println(tabsMenu + RED + "[ 0 ] Exit" + RESET);
 
             System.out.print(tabsMenu + "your option: ");
@@ -479,7 +528,7 @@ public class Main {
 
             int choise = isOption(op);
 
-            if(choise == -1 || choise > 5){
+            if(choise == -1 || choise > 6){
                 System.out.println(tabs + RED + "Option invalid, try again" + RESET);
                 continue;
             }
@@ -493,11 +542,13 @@ public class Main {
                 case 0 -> {
                     return;
                 }
-                case 1 -> content = showAllInfos();
-                case 2 -> content = resume();
+
+                case 1 -> content = informations.allInfos;
+                case 2 -> content = informations.resume;
                 case 3 -> content = search();
-                case 4 -> content = allAvgSemester();
-                case 5 -> content = expectedIra() + "\n";
+                case 4 -> content = informations.avgPerSemester;
+                case 5 -> content = informations.expectedIra + "\n";
+                case 6 -> content = informations.personalInfos;
 
             }
 

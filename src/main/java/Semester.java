@@ -1,5 +1,9 @@
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+
+import static java.lang.Double.NaN;
 
 
 public class Semester {
@@ -55,7 +59,23 @@ public class Semester {
 
         }
 
-        return sum / count;
+        if(count == 0) return NaN;
+
+        return BigDecimal.valueOf(sum).divide(BigDecimal.valueOf(count), 2, RoundingMode.CEILING).doubleValue();
+    }
+
+    public int totalEnrolled(){
+        return disciplines.size();
+    }
+
+    public Integer totalAbsences(){
+
+        int absences = 0;
+
+        for(var d : disciplines){
+            absences += d.absence;
+        }
+        return absences;
     }
 
 }
