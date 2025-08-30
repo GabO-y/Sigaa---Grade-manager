@@ -40,7 +40,7 @@ public class Discipline {
         return code + " " + name + " ( " + sb + " ): [ " + avg + " ] " + " | " + absence;
     }
 
-    public double average(){
+    public Double average(){
 
         if(scores == null) return  0.0;
 
@@ -53,7 +53,7 @@ public class Discipline {
             count += i++;
         }
 
-        if(count == 0) return 0;
+        if(count == 0) return 0.0;
 
         return BigDecimal.valueOf(sum).divide(BigDecimal.valueOf(count), 1, RoundingMode.CEILING).doubleValue();
     }

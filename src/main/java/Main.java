@@ -1,4 +1,3 @@
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -16,23 +15,13 @@ public class Main {
 
     Informations informations;
 
-    public static final String tabsMenu = "\t\t\t\t\t\t";
-    public static final String tabs = "\t\t\t\t\t\t";
-
     public static final String GREEN = "\u001B[32m";
     public static final String RESET = "\u001B[0m";
     public static final String RED = "\u001B[31m";
-    public static final String BLUE = "\u001B[34m";
 
     public Main(String content){
         init(content);
         informations = new Informations(this);
-    }
-
-    public Main(){}
-
-    public void read(String content){
-        init(content);
     }
 
     public void init(String content){
@@ -44,7 +33,6 @@ public class Main {
         Pattern name = Pattern.compile(" [A-Za-z].+\\(\\d{8}\\)");
         Pattern uce = Pattern.compile("UNIDADE CURRICULAR DE EXTENSÃO-UCE");
         Pattern number = Pattern.compile(" \\d+.+\\d+|-- 0 --");
-        Pattern studentCourse = Pattern.compile("Curso:\\s*(.*)");
 
         String[] lines = content.split("\n");
 
@@ -126,7 +114,6 @@ public class Main {
 
             Discipline d = new Discipline(codeTemp, nameTemp, score, absence, avg);
 
-
             last.disciplines.add(d);
 
         }
@@ -153,19 +140,6 @@ public class Main {
         return m.find() ? m.group() : "";
     }
 
-    public String allAvgSemester(){
-
-        StringBuilder content = new StringBuilder();
-
-        for(var s : semesters){
-            content.append(tabs).append(s.date).append(": ").append(Double.isNaN(s.ira()) ? "no grades yet" :
-                String.format("%.2f", s.ira())
-            ).append("\n");
-        }
-
-        return content.toString();
-    }
-
     public String expectedIra(){
         double sum = 0.0;
         int count = 0;
@@ -174,216 +148,86 @@ public class Main {
             sum += s.ira();
             count++;
         }
-        return tabs + "IRA: " + String.format("%.1f", sum/count);
+        return "IRA: " + String.format("%.1f", sum/count);
     }
 
     public String personalInfos(){
 
-        StringBuilder infos = new StringBuilder();
-
-        infos.append(student.name()).append("\n");
-        infos.append(student.course()).append("\n\n");
-
-        Table t = new Table("Infos");
+        Table t = new Table("personal information");
 
         for(var s : semesters){
 
-            t.addRown(s.date);
-            t.addColumn("enrolled", Integer.toString(s.totalEnrolled()));
-            t.addColumn("absences",  s.totalAbsences().toString());
-            t.addColumn("avg", s.ira().toString());
+            t.addR(s.date);
+
+            t.addC("enrolled", s.totalEnrolled().toString());
+            t.addC("absences", s.totalAbsences().toString());
+            t.addC("avg", s.ira().toString());
 
         }
 
-        return infos + t.table();
-    }
-
-    public String personalTable(){
-
-
-
-        return "";
-
+        return t.table();
     }
 
     public String resume(){
 
-        List<String> resume = new ArrayList<>(Arrays.stream(resumeAll().split("\n\n")).toList());
-        resume.remove(resume.size() - 1);
-        StringBuilder sb = new StringBuilder();
-
-        int size = maxBorder(resume);
-
-        for(var s : resume){
-
-            String[] split = s.split("\n");
-
-            for(var line : split){
-                sb.append(tabs).append(normalizeLine(line, size)).append("\n");
-            }
-
-
-        }
-
-        return sb.toString();
-
-    }
-
-    public String normalizeLine(String line, int size){
-
-        StringBuilder sb = new StringBuilder();
-
-        if(line.length() == 6){
-
-            boolean aux = true;
-
-            while(sb.length() != size * 2){
-
-                if(sb.length() / 0.8 >= size && aux){
-                    sb.append(line);
-                    aux = false;
-                }else{
-                    sb.append("||");
-                }
-
-            }
-
-            return sb.toString();
-        }
-
-
-        Pattern left = Pattern.compile(".+\\|\\|");
-        Pattern right = Pattern.compile("\\|\\|.+");
-
-        Matcher mLeft = left.matcher(line);
-        Matcher mRight = right.matcher(line);
-
-        if(mLeft.find()){
-
-            sb.append(mLeft.group().replaceAll(" +\\|\\|", ""));
-
-            while(sb.length() != size){
-                sb.append(" ");
-            }
-
-        }
-
-        if(mRight.find()){
-            sb.append(" ").append(mRight.group());
-        }
-
-        return sb.toString();
-
-    }
-
-    public int maxBorder(List<String> list){
-
-        Pattern p = Pattern.compile(".+\\|\\|");
-        int max = 0;
-
-        for(var fields : list){
-
-            String[] lines = fields.split("\n");
-
-            for(var line : lines){
-
-            Matcher m = p.matcher(line);
-
-            if(m.find()){
-
-                String temp = m.group().replace(" ||", "");
-                temp = temp.replaceAll(" +$", "");
-
-                if(max < temp.length()){
-                    max = temp.length();
-                }
-
-            }
-
-        }
-
-        }
-
-        return max;
-
-    }
-
-    public String resumeAll(){
-
-        StringBuilder str = new StringBuilder();
+        Table t = new Table("Infomations");
 
         for(var s : semesters){
 
-            str.append(s.date).append("\n");
-
             for(var d : s.disciplines){
 
-                String sort = shorten(d.name);
+                int i = 1;
 
-                if(sort.isBlank()) continue;
+                if(shorten(d.name).isBlank()) continue;
 
-                str.append(sort).append(" || ");
+                t.addR(shorten(d.name));
 
-                if(d.scores == null) {
-                    str.append("no grades yet").append("\n");
-                    continue;
+                if(d.scores != null){
+                    for(var scr : d.scores){
+                        t.addC("Un." + i++, scr.toString());
+                    }
+
+                    while(i != 4){
+                        t.addC("Un." + i++, "-");
+                    }
+
+                    t.addC("total", d.average().toString());
+                }else{
+                    while(i != 4){
+                    t.addC("Un." + i++, "-");
+                    }
+                    t.addC("total", "-");
                 }
 
-//                for (var score : d.scores){
-//                    str.append(score).append(" | ");
-//                }
-//
-//                str.append("\b -> ").append(String.format("%.1f\n", d.average()));
-
-                str.append(organizeGrade(d.scores))
-                    .append(" -> ")
-                    .append(String.format("%.1f", d.average()))
-                    .append("\n");
-
             }
-
-            str.append("\n\n");
 
         }
 
-        return str.toString();
-
+        return t.table();
     }
 
-    private String organizeGrade(List<Double> scores){
-
-        StringBuilder sb = new StringBuilder();
-
-//        for(var s : scores){
+//    public String resume(){
 //
-//            StringBuilder current = new StringBuilder(" " + s);
+//        List<String> resume = new ArrayList<>(Arrays.stream(resumeAll().split("\n\n")).toList());
+//        resume.remove(resume.size() - 1);
+//        StringBuilder sb = new StringBuilder();
 //
-//            while(current.length() != 6){
-//                current.append(" ");
+//        int size = maxBorder(resume);
+//
+//        for(var s : resume){
+//
+//            String[] split = s.split("\n");
+//
+//            for(var line : split){
+//                sb.append(normalizeLine(line, size)).append("\n");
 //            }
 //
-//            sb.append(current).append(" | ");
 //
 //        }
-
-        for(int i = 0; i < 3; i++){
-
-            StringBuilder current = new StringBuilder();
-
-            if(i < scores.size()){
-                current.append(scores.get(i));
-            }
-
-            while(current.length() != 6){
-                current.append(" ");
-            }
-
-            sb.append(current).append("| ");
-
-        }
-
-        return sb.toString();
-    }
+//
+//        return sb.toString();
+//
+//    }
 
     private String shorten(String str){
 
@@ -477,14 +321,14 @@ public class Main {
     }
 
     public String showAllInfos(){
-        return tabs + informations.lineWithInfos.replaceAll("\n", "\n\n" + tabs).replaceAll("#", "\n" + tabs);
+        return informations.lineWithInfos.replaceAll("\n", "\n\n").replaceAll("#", "\n");
     }
 
     public String search(){
 
         Scanner sc = new Scanner(System.in);
 
-        System.out.print(tabs + "Your search: ");
+        System.out.print("Your search: ");
         String content = sc.nextLine();
 
         Pattern p = Pattern.compile(".+" + content.toLowerCase(Locale.ROOT) +".+");
@@ -498,13 +342,13 @@ public class Main {
             Matcher m = p.matcher(line.toLowerCase(Locale.ROOT));
 
             while(m.find()){
-                sb.append(tabs).append(line).append("\n");
+                sb.append(line).append("\n");
             }
         }
 
-        if(sb.toString().isBlank()) return "\n" + tabs + RED + "not have result to this search\n" + RESET;
+        if(sb.toString().isBlank()) return "\n" + RED + "not have result to this search\n" + RESET;
 
-        return "\n" + tabs + "Result: \n" + sb.toString().replaceAll("\n", "\n\n").replaceAll("#", "\n" + tabs);
+        return "\nResult: \n" + sb.toString().replaceAll("\n", "\n\n").replaceAll("#", "\n");
     }
 
     public void start(){
@@ -515,21 +359,20 @@ public class Main {
 
         while(true){
 
-            System.out.println(tabsMenu + "[ 1 ] Show all information");
-            System.out.println(tabsMenu + "[ 2 ] Show resume");
-            System.out.println(tabsMenu + "[ 3 ] Search");
-            System.out.println(tabsMenu + "[ 4 ] Average of all semesters");
-            System.out.println(tabsMenu + "[ 5 ] Probably IRA");
-            System.out.println(tabsMenu + "[ 6 ] Personal information");
-            System.out.println(tabsMenu + RED + "[ 0 ] Exit" + RESET);
+            System.out.println("[ 1 ] Show all information");
+            System.out.println("[ 2 ] Show resume");
+            System.out.println("[ 3 ] Search");
+            System.out.println("[ 4 ] Probably IRA");
+            System.out.println("[ 5 ] Personal information");
+            System.out.println(RED + "[ 0 ] Exit" + RESET);
 
-            System.out.print(tabsMenu + "your option: ");
+            System.out.print("your option: ");
             String op = sc.nextLine();
 
             int choise = isOption(op);
 
-            if(choise == -1 || choise > 6){
-                System.out.println(tabs + RED + "Option invalid, try again" + RESET);
+            if(choise == -1 || choise > 5){
+                System.out.println(RED + "Option invalid, try again" + RESET);
                 continue;
             }
 
@@ -546,12 +389,10 @@ public class Main {
                 case 1 -> content = informations.allInfos;
                 case 2 -> content = informations.resume;
                 case 3 -> content = search();
-                case 4 -> content = informations.avgPerSemester;
-                case 5 -> content = informations.expectedIra + "\n";
-                case 6 -> content = informations.personalInfos;
+                case 4 -> content = informations.expectedIra + "\n";
+                case 5 -> content = informations.personalInfos;
 
             }
-
             System.out.println(GREEN + content + RESET);
 
         }

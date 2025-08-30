@@ -64,7 +64,7 @@ public class Semester {
         return BigDecimal.valueOf(sum).divide(BigDecimal.valueOf(count), 2, RoundingMode.CEILING).doubleValue();
     }
 
-    public int totalEnrolled(){
+    public Integer totalEnrolled(){
         return disciplines.size();
     }
 

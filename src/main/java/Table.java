@@ -1,182 +1,170 @@
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Table {
 
-    public static void main(String[] args) {
-
-        Table t = new Table("Information");
-
-        t.addColumn("enrolled", "10");
-        t.addColumn("absences", "00");
-        t.addColumn("slaa", "00");
-        t.addColumn("slaa", "00");
-        t.addColumn("slaa", "00");
-        t.addColumn("slaa", "00");
-
-        t.addRown("2025.2");
-        t.addRown("2025.1");
-
-
-
-    }
-
-    String name;
-    List<Column> columns = new LinkedList<>();
-    List<String> rows = new LinkedList<>();
+    public static int maxSizeColumn = 0;
 
     public Table(String name){
         this.name = name;
     }
 
-    public void addColumn(String name, String value){
+    List<Column> columns = new LinkedList<>();
+    List<String> rows = new LinkedList<>();
+    String name;
 
-        Column column = null;
-        boolean find = false;
-
-        for(var c : columns){
-            if(c.name.equals(name)){
-                column = c;
-                find = true;
-                break;
-            }
-        }
-
-        if(!find){
-            column = new Column(name);
-            columns.add(column);
-        }
-
-        column.add(value);
-
-    }
-
-    public void addRown(String name){
+    public void addR(String name){
         rows.add(name);
     }
 
-    public void addColumn(String name){
-        columns.add(new Column(name));
-    }
-
-    public void addValueColumn(int index, String value){
-        columns.get(index).values.add(value);
+    public void addC(String name, String value){
+        Column c = haveColumn(name);
+        if(c == null){
+            columns.add(new Column(name));
+            columns.get(columns.size() - 1).add(value);
+            return;
+        }
+        c.add(value);
     }
 
     public String table(){
 
-        String c = combineColumns();
+        //gambirra pra duplicar a primeira coluna, pq ele oculta e nao sei como consertar
+        Column col = columns.get(0);
+        columns.add(0, new Column(col.name));
 
-        System.out.println(c);
+        for(var v : col.values){
+            columns.get(0).add(v);
+        }
+        //fim da gambiarra
 
-        int max = maxSizeColumn();
+        normalizeColumns();
 
-        if(rows.size() != max){
-            while (rows.size() < max){
+        List<List<String>> lines = new LinkedList<>();
+
+        lines.add(new LinkedList<>());
+
+        int first = columns.get(0).toString().split("#").length;
+
+        while (first-- != 1){
+            lines.add(new LinkedList<>());
+        }
+
+        for(var c : columns){
+
+            String[] l = line(c.toString()).split("#");
+
+            int i = 0;
+
+            for(var line : l){
+                lines.get(i++).add(line);
+            }
+
+        }
+
+        String[] rows = line(organizeRows()).split("#");
+        int i = 0;
+
+        for(var r : rows){
+           lines.get(i++).set(0, r);
+        }
+
+        //makeRows(lines);
+
+        String table = listToTable(lines);
+
+        return title(table.split("\n")[0].length()).replace(" ", "|") + "\n" + table;
+
+    }
+
+    public void makeRows(List<List<String>> lines){
+        String[] rows = line(organizeRows()).split("#");
+        int i = 0;
+
+        for(var r : rows){
+            lines.get(i++).set(0, r);
+        }
+    }
+
+    public String title(int size){
+
+        if(name.length() >= size){
+            return name;
+        }
+
+        int leftSpaces = 0;
+        int rightSpaces = 0;
+
+        while(leftSpaces + rightSpaces + name.length() < size){
+            leftSpaces++;
+            rightSpaces++;
+        }
+
+        while(leftSpaces + rightSpaces + name.length() > size) leftSpaces--;
+
+        return spaces(leftSpaces).replace(" ", "|") + name + spaces(rightSpaces - 1).replace(" ", "|");
+    }
+
+    public String organizeRows(){
+        StringBuilder sb = new StringBuilder(" #");
+
+        if(rows.size() < maxSizeColumn){
+            while(rows.size() < maxSizeColumn){
                 rows.add("-");
             }
         }
 
-        int maxSizeRow = maxSizeRow();
-
-        for(int i = -1; i < rows.size(); i++){
-
-            if(i == -1){
-                String current = line(" ", maxSizeRow);
-                c = c.replace("#-", (current + " | "));
-                continue;
-            }
-
-            String current = line(rows.get(i), maxSizeRow);
-
-
-            c = c.replace("#" + i, current + "|");
-
+        for(var r : rows){
+            sb.append(r).append("#");
         }
 
-        int firstLineSize = c.split("\n")[0].length();
-
-        return line(this.name, firstLineSize).replace(" ", "|") + "\n" + c;
-
+        return (sb + "#").replace("##", "");
     }
 
-    public int maxSizeRow(){
-
-        System.out.println("Aqui:" + rows );
+    public void normalizeColumns(){
 
         int max = 0;
 
-        for(String r : rows){
-            if(r.length() > max){
-                max = r.length();
-            }
-        }
-
-        return max;
-
-    }
-
-
-    public int maxSizeColumn(){
-        int max = 0;
         for(var c : columns){
             if(c.values.size() > max){
                 max = c.values.size();
             }
         }
-        return max;
-    }
-
-    public String combineColumns(){
-
-        List<Column> columns = this.columns;
-        List<List<String>> lists = new LinkedList<>();
-
-        int max = maxSizeColumn();
+        maxSizeColumn = max;
 
         for(var c : columns){
-            if(c.size() <= max){
-                while(c.size() != max){
-                    c.add("-");
+            if(c.values.size() < max){
+                while(c.values.size() < max){
+                    addC(c.name, "-");
                 }
             }
-            lists.add(toList(c));
         }
 
-        StringBuilder str = new StringBuilder();
-
-        int i = 0;
-        int j = 0;
-
-        while(j <= max){
-
-            if(i == 0){
-                if(j == 0){
-                    str.append("#").append("-");
-                }else{
-                str.append("#").append(j - 1);
-                }
-            }
-
-            str.append(lists.get(i++).get(j));
-
-            if(i == columns.size()){
-                str.append("\n");
-                i = 0;
-                j++;
-            }
-
-        }
-
-        return str.toString();
     }
 
-    private List<String> toList(Column c){
-        return new LinkedList<>(Arrays.stream(c.toString().replaceAll("#", "\n").split("\n")).toList());
+    public String listToTable(List<List<String>> list){
+
+        StringBuilder sb = new StringBuilder();
+
+        for(var l : list){
+            for(var j : l){
+                sb.append(j);
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
+
+    }
+
+    public Column haveColumn(String name){
+        for(var c : this.columns){
+            if(c.name.equals(name)) return c;
+        }
+        return null;
     }
 
     public static class Column{
+
         String name;
         List<String> values = new LinkedList<>();
 
@@ -188,71 +176,84 @@ public class Table {
             values.add(value);
         }
 
-        public String maxText(){
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            Column column = (Column) o;
+            return Objects.equals(name, column.name);
+        }
 
-            int max = name.length();
-            String m = name;
-            for(var c : values){
-                if(max < c.length()){
-                    max = c.length();
-                    m = c;
-                }
-            }
-            return m;
-
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(name);
         }
 
         @Override
         public String toString() {
 
-            StringBuilder column = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
 
-            int max = maxText().length();
-
-            if(max > name.length()){
-                column.append(line(name, max));
-            }else{
-                column.append(name);
-            }
-
-            column.append(" ||#");
+            sb.append(name).append("#");
 
             for(var v : values){
-
-                if(v.length() < max) column.append(line(v, max));
-                else column.append(v);
-
-                column.append(" ||#");
-
+                sb.append(v).append("#");
             }
 
-            return column.toString();
-        }
-
-        public int size(){
-            return values.size();
+            return (sb + "#").replace("##", "");
         }
     }
 
-    public static String line(String value, int size){
+    //ex: value#value#value
+    public static String line(String line){
 
-        StringBuilder current = new StringBuilder();
-        boolean aux = true;
+        StringBuilder str = new StringBuilder();
 
-        //mudei aqui
-        while(current.length() < size){
+        String[] fields = line.split("#");
 
-            if( ((current.length() + value.length()/2) > (size/2)) && aux){
-                aux = false;
-                current.append(value);
+        int max = 0;
+        for(var field : fields){
+            if(field.length() > max){
+                max = field.length();
             }
-
-            current.append(" ");
-
         }
 
-        return current.toString();
+        for(var f : fields){
+
+            int leftSpaces = 0;
+            int rightSpaces = 0;
+
+            if(f.length() < max){
+
+                int totalSize = leftSpaces + f.length() + rightSpaces;
+
+                while(totalSize < max){
+                    leftSpaces++;
+                    rightSpaces++;
+                    totalSize = leftSpaces + f.length() + rightSpaces;
+                }
+
+                if(totalSize > max){
+                    while(totalSize != max){
+                        leftSpaces--;
+                        totalSize = leftSpaces + f.length() + rightSpaces;
+                    }
+                }
+
+                str.append(spaces(leftSpaces)).append(f).append(spaces(rightSpaces)).append(" | #");
+            }else{
+                str.append(f).append(" | #");
+            }
+
+        }
+        return str.toString();
     }
 
+    public static String spaces(int quant){
+        StringBuilder spaces = new StringBuilder();
+        while(spaces.length() != quant){
+            spaces.append(" ");
+        }
+        return spaces.toString();
+    }
 
 }
